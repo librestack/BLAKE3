@@ -284,11 +284,25 @@ fn test_compare_reference_impl() {
             // all at once
             let test_out = crate::hash(input);
             assert_eq!(test_out, *array_ref!(expected_out, 0, 32));
+            // all at once (rayon)
+            #[cfg(feature = "rayon")]
+            {
+                let test_out = crate::hash_rayon(input);
+                assert_eq!(test_out, *array_ref!(expected_out, 0, 32));
+            }
             // incremental
             let mut hasher = crate::Hasher::new();
             hasher.update(input);
             assert_eq!(hasher.finalize(), *array_ref!(expected_out, 0, 32));
             assert_eq!(hasher.finalize(), test_out);
+            // incremental (rayon)
+            #[cfg(feature = "rayon")]
+            {
+                let mut hasher = crate::Hasher::new();
+                hasher.update_rayon(input);
+                assert_eq!(hasher.finalize(), *array_ref!(expected_out, 0, 32));
+                assert_eq!(hasher.finalize(), test_out);
+            }
             // xof
             let mut extended = [0; OUT];
             hasher.finalize_xof().fill(&mut extended);
@@ -305,11 +319,25 @@ fn test_compare_reference_impl() {
             // all at once
             let test_out = crate::keyed_hash(&TEST_KEY, input);
             assert_eq!(test_out, *array_ref!(expected_out, 0, 32));
+            // all at once (rayon)
+            #[cfg(feature = "rayon")]
+            {
+                let test_out = crate::keyed_hash_rayon(&TEST_KEY, input);
+                assert_eq!(test_out, *array_ref!(expected_out, 0, 32));
+            }
             // incremental
             let mut hasher = crate::Hasher::new_keyed(&TEST_KEY);
             hasher.update(input);
             assert_eq!(hasher.finalize(), *array_ref!(expected_out, 0, 32));
             assert_eq!(hasher.finalize(), test_out);
+            // incremental (rayon)
+            #[cfg(feature = "rayon")]
+            {
+                let mut hasher = crate::Hasher::new_keyed(&TEST_KEY);
+                hasher.update_rayon(input);
+                assert_eq!(hasher.finalize(), *array_ref!(expected_out, 0, 32));
+                assert_eq!(hasher.finalize(), test_out);
+            }
             // xof
             let mut extended = [0; OUT];
             hasher.finalize_xof().fill(&mut extended);
@@ -328,11 +356,26 @@ fn test_compare_reference_impl() {
             let mut test_out = [0; OUT];
             crate::derive_key(context, input, &mut test_out);
             assert_eq!(test_out[..], expected_out[..]);
+            // all at once (rayon)
+            #[cfg(feature = "rayon")]
+            {
+                let mut test_out = [0; OUT];
+                crate::derive_key_rayon(context, input, &mut test_out);
+                assert_eq!(test_out[..], expected_out[..]);
+            }
             // incremental
             let mut hasher = crate::Hasher::new_derive_key(context);
             hasher.update(input);
             assert_eq!(hasher.finalize(), *array_ref!(expected_out, 0, 32));
             assert_eq!(hasher.finalize(), *array_ref!(test_out, 0, 32));
+            // incremental (rayon)
+            #[cfg(feature = "rayon")]
+            {
+                let mut hasher = crate::Hasher::new_derive_key(context);
+                hasher.update_rayon(input);
+                assert_eq!(hasher.finalize(), *array_ref!(expected_out, 0, 32));
+                assert_eq!(hasher.finalize(), *array_ref!(test_out, 0, 32));
+            }
             // xof
             let mut extended = [0; OUT];
             hasher.finalize_xof().fill(&mut extended);
@@ -503,17 +546,6 @@ fn test_reset() {
     let mut expected = [0; crate::OUT_LEN];
     crate::derive_key(context, &[42; CHUNK_LEN + 3], &mut expected);
     assert_eq!(kdf.finalize(), expected);
-}
-
-#[test]
-#[cfg(feature = "rayon")]
-fn test_update_with_rayon_join() {
-    let mut input = [0; TEST_CASES_MAX];
-    paint_test_input(&mut input);
-    let rayon_hash = crate::Hasher::new()
-        .update_with_join::<crate::join::RayonJoin>(&input)
-        .finalize();
-    assert_eq!(crate::hash(&input), rayon_hash);
 }
 
 #[test]
